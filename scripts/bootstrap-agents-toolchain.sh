@@ -50,11 +50,24 @@ install_aws() {
   log OK "AWS CLI installed: $(aws --version 2>&1)"
 }
 
+# ─── 3. Azure CLI ──────────────────────────────────────────────────────────
+install_az() {
+  if have_cmd az; then
+    log OK "Azure CLI already installed: $(az version --output tsv 2>/dev/null | head -1)"
+    return
+  fi
+  log INFO "Installing Azure CLI"
+  # Official Microsoft installer for Debian/Ubuntu
+  curl -fsSL https://aka.ms/InstallAzureCLIDeb | sudo bash
+  log OK "Azure CLI installed: $(az version --output tsv 2>/dev/null | head -1)"
+}
+
 # ─── MAIN ──────────────────────────────────────────────────────────────────
 main() {
   log INFO "Starting agents toolchain bootstrap"
   install_apt_packages
   install_aws
+  install_az
   log OK "Bootstrap completed"
 }
 
