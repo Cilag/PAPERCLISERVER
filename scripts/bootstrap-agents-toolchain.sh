@@ -80,6 +80,38 @@ install_gcloud() {
   log OK "gcloud installed"
 }
 
+# ─── 5. Terraform (HashiCorp) ──────────────────────────────────────────────
+install_terraform() {
+  if have_cmd terraform; then
+    log OK "Terraform already installed: $(terraform version | head -1)"
+    return
+  fi
+  log INFO "Installing Terraform via HashiCorp apt repo"
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://apt.releases.hashicorp.com/gpg \
+    | sudo gpg --dearmor -o /etc/apt/keyrings/hashicorp.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+    | sudo tee /etc/apt/sources.list.d/hashicorp.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y terraform
+  log OK "Terraform installed: $(terraform version | head -1)"
+}
+
+# ─── 6. OpenTofu ───────────────────────────────────────────────────────────
+install_opentofu() {
+  if have_cmd tofu; then
+    log OK "OpenTofu already installed: $(tofu --version | head -1)"
+    return
+  fi
+  log INFO "Installing OpenTofu via official installer"
+  local tmpdir; tmpdir=$(mktemp -d)
+  curl -fsSL https://get.opentofu.org/install-opentofu.sh -o "$tmpdir/install-opentofu.sh"
+  chmod +x "$tmpdir/install-opentofu.sh"
+  sudo "$tmpdir/install-opentofu.sh" --install-method deb
+  rm -rf "$tmpdir"
+  log OK "OpenTofu installed: $(tofu --version | head -1)"
+}
+
 # ─── MAIN ──────────────────────────────────────────────────────────────────
 main() {
   log INFO "Starting agents toolchain bootstrap"
@@ -87,6 +119,8 @@ main() {
   install_aws
   install_az
   install_gcloud
+  install_terraform
+  install_opentofu
   log OK "Bootstrap completed"
 }
 
