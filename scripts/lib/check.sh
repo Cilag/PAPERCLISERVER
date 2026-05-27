@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
 # Helper functions for idempotent install scripts.
 # Source this file: `source "$(dirname "$0")/lib/check.sh"`
-
-set -euo pipefail
+#
+# Do not source from a script that hasn't set its own strict mode;
+# this library doesn't impose options (no set -euo pipefail here).
 
 # log <level> <message>
 log() {
   local level="$1"; shift
   local color_reset='\033[0m'
-  local color
+  local color out_fd=1
   case "$level" in
-    INFO)  color='\033[36m' ;;  # cyan
-    OK)    color='\033[32m' ;;  # green
-    WARN)  color='\033[33m' ;;  # yellow
-    ERROR) color='\033[31m' ;;  # red
+    INFO)  color='\033[36m' ;;
+    OK)    color='\033[32m' ;;
+    WARN)  color='\033[33m'; out_fd=2 ;;
+    ERROR) color='\033[31m'; out_fd=2 ;;
     *)     color='' ;;
   esac
-  printf "${color}[%s]${color_reset} %s\n" "$level" "$*"
+  printf "${color}[%s]${color_reset} %s\n" "$level" "$*" >&$out_fd
 }
 
 # have_cmd <cmd> — returns 0 if command exists in PATH
@@ -43,7 +44,11 @@ require_root() {
   fi
 }
 
-# version_extract <cmd> — best-effort version extraction
+# version_extract <cmd> — best-effort version extraction; returns "missing" if cmd absent
 version_extract() {
-  "$1" --version 2>&1 | head -1 || echo "unknown"
+  if ! have_cmd "$1"; then
+    echo "missing"
+    return 0
+  fi
+  "$1" --version 2>/dev/null | head -1 || echo "unknown"
 }
