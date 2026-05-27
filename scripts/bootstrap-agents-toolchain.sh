@@ -167,6 +167,32 @@ install_gh() {
   log OK "gh installed: $(gh --version | head -1)"
 }
 
+# ─── 9. pipx Python tools ──────────────────────────────────────────────────
+install_pipx_tools() {
+  log INFO "Ensuring pipx is configured for current user"
+  pipx ensurepath >/dev/null 2>&1 || true
+
+  local pipx_pkgs=(ansible-core checkov yq prowler)
+  for pkg in "${pipx_pkgs[@]}"; do
+    if pipx list 2>/dev/null | grep -q "package $pkg "; then
+      log OK "pipx pkg $pkg already installed"
+    else
+      log INFO "Installing pipx pkg: $pkg"
+      pipx install "$pkg"
+    fi
+  done
+
+  # ansible community collections for cloud providers
+  if have_cmd ansible-galaxy; then
+    log INFO "Installing ansible collections (community.aws, azure.azcollection, google.cloud)"
+    ansible-galaxy collection install -U \
+      community.aws \
+      azure.azcollection \
+      google.cloud >/dev/null
+    log OK "ansible collections installed"
+  fi
+}
+
 # ─── MAIN ──────────────────────────────────────────────────────────────────
 main() {
   log INFO "Starting agents toolchain bootstrap"
@@ -178,6 +204,7 @@ main() {
   install_opentofu
   install_kubernetes_clis
   install_gh
+  install_pipx_tools
   log OK "Bootstrap completed"
 }
 
