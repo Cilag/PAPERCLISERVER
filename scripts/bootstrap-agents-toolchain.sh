@@ -193,6 +193,54 @@ install_pipx_tools() {
   fi
 }
 
+# ─── 10. Go static binaries ────────────────────────────────────────────────
+# Helper: download a tarball/zip from a GitHub release and extract the binary.
+# Args: <name> <github_owner>/<repo> <release_tag_or_latest> <asset_filename_pattern> <binary_inside_archive>
+install_github_binary() {
+  local name="$1" repo="$2" tag="$3" asset="$4" bin_path_in_archive="$5"
+  if have_cmd "$name"; then
+    log OK "$name already installed"
+    return
+  fi
+  log INFO "Installing $name from github.com/$repo ($tag)"
+  local tmpdir; tmpdir=$(mktemp -d)
+  local url
+  if [ "$tag" = "latest" ]; then
+    url=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
+          | jq -r ".assets[] | select(.name | test(\"$asset\")) | .browser_download_url" \
+          | head -1)
+  else
+    url=$(curl -fsSL "https://api.github.com/repos/$repo/releases/tags/$tag" \
+          | jq -r ".assets[] | select(.name | test(\"$asset\")) | .browser_download_url" \
+          | head -1)
+  fi
+  if [ -z "$url" ]; then
+    log ERROR "Could not find asset matching $asset in $repo $tag"
+    rm -rf "$tmpdir"; return 1
+  fi
+  curl -fsSL "$url" -o "$tmpdir/asset"
+  # Detect archive type and extract
+  case "$url" in
+    *.tar.gz|*.tgz) tar -xzf "$tmpdir/asset" -C "$tmpdir" ;;
+    *.zip)          unzip -q "$tmpdir/asset" -d "$tmpdir" ;;
+    *)              # plain binary
+                    cp "$tmpdir/asset" "$tmpdir/$bin_path_in_archive" ;;
+  esac
+  install -m 755 "$tmpdir/$bin_path_in_archive" "$HOME/.local/bin/$name"
+  rm -rf "$tmpdir"
+  log OK "$name installed: $("$name" --version 2>&1 | head -1)"
+}
+
+install_go_binaries() {
+  install_github_binary sops      getsops/sops      latest "sops-.*\\.linux\\.amd64$"      "sops-*.linux.amd64"
+  install_github_binary tfsec     aquasecurity/tfsec latest "tfsec-linux-amd64$"            "tfsec-linux-amd64"
+  install_github_binary gitleaks  gitleaks/gitleaks latest "gitleaks_.*_linux_x64\\.tar\\.gz$" "gitleaks"
+  install_github_binary trivy     aquasecurity/trivy latest "trivy_.*_Linux-64bit\\.tar\\.gz$" "trivy"
+  install_github_binary infracost infracost/infracost latest "infracost-linux-amd64\\.tar\\.gz$" "infracost-linux-amd64"
+  install_github_binary kube-bench aquasecurity/kube-bench latest "kube-bench_.*_linux_amd64\\.tar\\.gz$" "kube-bench"
+  # age is installed via apt (Task 2) on Ubuntu 24+, so no need here
+}
+
 # ─── MAIN ──────────────────────────────────────────────────────────────────
 main() {
   log INFO "Starting agents toolchain bootstrap"
@@ -205,7 +253,8 @@ main() {
   install_kubernetes_clis
   install_gh
   install_pipx_tools
-  log OK "Bootstrap completed"
+  install_go_binaries
+  log OK "Bootstrap completed — run again anytime; it's idempotent"
 }
 
 main "$@"
