@@ -112,6 +112,61 @@ install_opentofu() {
   log OK "OpenTofu installed: $(tofu --version | head -1)"
 }
 
+# ─── 7. kubectl / helm / kustomize ─────────────────────────────────────────
+install_kubernetes_clis() {
+  # kubectl via official k8s apt repo (specify major version 1.31 - update as needed)
+  if ! have_cmd kubectl; then
+    log INFO "Installing kubectl"
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key \
+      | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" \
+      | sudo tee /etc/apt/sources.list.d/kubernetes.list >/dev/null
+    sudo apt-get update -qq
+    sudo apt-get install -y kubectl
+    log OK "kubectl installed: $(kubectl version --client --output=yaml | grep gitVersion | head -1)"
+  else
+    log OK "kubectl already installed"
+  fi
+
+  # helm via official script
+  if ! have_cmd helm; then
+    log INFO "Installing helm"
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    log OK "helm installed: $(helm version --short)"
+  else
+    log OK "helm already installed"
+  fi
+
+  # kustomize binary into ~/.local/bin
+  if ! have_cmd kustomize; then
+    log INFO "Installing kustomize"
+    curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" \
+      | bash -s -- "$HOME/.local/bin"
+    log OK "kustomize installed: $(kustomize version)"
+  else
+    log OK "kustomize already installed"
+  fi
+}
+
+# ─── 8. GitHub CLI ─────────────────────────────────────────────────────────
+install_gh() {
+  if have_cmd gh; then
+    log OK "gh already installed: $(gh --version | head -1)"
+    return
+  fi
+  log INFO "Installing GitHub CLI"
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    | sudo dd of=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+  sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y gh
+  log OK "gh installed: $(gh --version | head -1)"
+}
+
 # ─── MAIN ──────────────────────────────────────────────────────────────────
 main() {
   log INFO "Starting agents toolchain bootstrap"
@@ -121,6 +176,8 @@ main() {
   install_gcloud
   install_terraform
   install_opentofu
+  install_kubernetes_clis
+  install_gh
   log OK "Bootstrap completed"
 }
 
