@@ -62,12 +62,31 @@ install_az() {
   log OK "Azure CLI installed: $(az version --output tsv 2>/dev/null | head -1)"
 }
 
+# ─── 4. Google Cloud SDK ───────────────────────────────────────────────────
+install_gcloud() {
+  if have_cmd gcloud; then
+    log OK "gcloud already installed: $(gcloud version --format='value(\"Google Cloud SDK\")' 2>/dev/null | head -1)"
+    return
+  fi
+  log INFO "Installing Google Cloud SDK via apt"
+  # Use Google's apt repo for clean upgrades
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+    | sudo gpg --dearmor -o /etc/apt/keyrings/cloud.google.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+    | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y google-cloud-cli
+  log OK "gcloud installed"
+}
+
 # ─── MAIN ──────────────────────────────────────────────────────────────────
 main() {
   log INFO "Starting agents toolchain bootstrap"
   install_apt_packages
   install_aws
   install_az
+  install_gcloud
   log OK "Bootstrap completed"
 }
 
