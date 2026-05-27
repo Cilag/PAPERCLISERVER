@@ -8,6 +8,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/lib/check.sh"
 
+# Track tmpdirs for automatic cleanup on EXIT (success or failure).
+# Functions that create tmpdirs append to _TMPDIRS; they no longer need to rm themselves.
+_TMPDIRS=()
+_cleanup_tmpdirs() {
+  local d
+  for d in "${_TMPDIRS[@]+"${_TMPDIRS[@]}"}"; do
+    [ -d "$d" ] && rm -rf "$d"
+  done
+}
+trap _cleanup_tmpdirs EXIT
+
 # Ensure ~/.local/bin exists and is in PATH
 ensure_dir "$HOME/.local/bin"
 case ":$PATH:" in
@@ -43,10 +54,10 @@ install_aws() {
   fi
   log INFO "Installing AWS CLI v2"
   local tmpdir; tmpdir=$(mktemp -d)
+  _TMPDIRS+=("$tmpdir")
   curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "$tmpdir/awscli.zip"
   unzip -q "$tmpdir/awscli.zip" -d "$tmpdir"
   sudo "$tmpdir/aws/install" --update
-  rm -rf "$tmpdir"
   log OK "AWS CLI installed: $(aws --version 2>&1)"
 }
 
@@ -105,10 +116,10 @@ install_opentofu() {
   fi
   log INFO "Installing OpenTofu via official installer"
   local tmpdir; tmpdir=$(mktemp -d)
+  _TMPDIRS+=("$tmpdir")
   curl -fsSL https://get.opentofu.org/install-opentofu.sh -o "$tmpdir/install-opentofu.sh"
   chmod +x "$tmpdir/install-opentofu.sh"
   sudo "$tmpdir/install-opentofu.sh" --install-method deb
-  rm -rf "$tmpdir"
   log OK "OpenTofu installed: $(tofu --version | head -1)"
 }
 
@@ -204,6 +215,7 @@ install_github_binary() {
   fi
   log INFO "Installing $name from github.com/$repo ($tag)"
   local tmpdir; tmpdir=$(mktemp -d)
+  _TMPDIRS+=("$tmpdir")
   local url
   if [ "$tag" = "latest" ]; then
     url=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
@@ -216,7 +228,7 @@ install_github_binary() {
   fi
   if [ -z "$url" ]; then
     log ERROR "Could not find asset matching $asset in $repo $tag"
-    rm -rf "$tmpdir"; return 1
+    return 1
   fi
   curl -fsSL "$url" -o "$tmpdir/asset"
   # Detect archive type and extract
@@ -227,7 +239,6 @@ install_github_binary() {
                     cp "$tmpdir/asset" "$tmpdir/$bin_path_in_archive" ;;
   esac
   install -m 755 "$tmpdir/$bin_path_in_archive" "$HOME/.local/bin/$name"
-  rm -rf "$tmpdir"
   log OK "$name installed: $("$name" --version 2>&1 | head -1)"
 }
 
