@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# bootstrap-agents-toolchain.sh
+# Idempotent install of all CLIs needed by the 5 Paperclip agents.
+# Target: Ubuntu 24+. Run as user `guigui` (will sudo when needed).
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/check.sh"
+
+# Ensure ~/.local/bin exists and is in PATH
+ensure_dir "$HOME/.local/bin"
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *)
+    log WARN "$HOME/.local/bin not in PATH. Add to ~/.profile:"
+    log WARN '  export PATH="$HOME/.local/bin:$PATH"'
+    export PATH="$HOME/.local/bin:$PATH"
+    ;;
+esac
+
+# ─── 1. APT base packages ──────────────────────────────────────────────────
+install_apt_packages() {
+  local pkgs=(
+    curl jq unzip ca-certificates gnupg lsb-release
+    dnsutils nmap traceroute mtr
+    wireguard-tools
+    podman buildah skopeo
+    python3-pip pipx
+    age
+  )
+  log INFO "Installing apt packages: ${pkgs[*]}"
+  sudo apt-get update -qq
+  sudo apt-get install -y "${pkgs[@]}"
+  log OK "apt packages installed"
+}
+
+# ─── MAIN ──────────────────────────────────────────────────────────────────
+main() {
+  log INFO "Starting agents toolchain bootstrap"
+  install_apt_packages
+  log OK "Bootstrap completed"
+}
+
+main "$@"
