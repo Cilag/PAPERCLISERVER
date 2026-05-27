@@ -35,10 +35,26 @@ install_apt_packages() {
   log OK "apt packages installed"
 }
 
+# ─── 2. AWS CLI v2 ─────────────────────────────────────────────────────────
+install_aws() {
+  if have_cmd aws && aws --version 2>&1 | grep -q "aws-cli/2\."; then
+    log OK "AWS CLI v2 already installed: $(aws --version 2>&1)"
+    return
+  fi
+  log INFO "Installing AWS CLI v2"
+  local tmpdir; tmpdir=$(mktemp -d)
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "$tmpdir/awscli.zip"
+  unzip -q "$tmpdir/awscli.zip" -d "$tmpdir"
+  sudo "$tmpdir/aws/install" --update
+  rm -rf "$tmpdir"
+  log OK "AWS CLI installed: $(aws --version 2>&1)"
+}
+
 # ─── MAIN ──────────────────────────────────────────────────────────────────
 main() {
   log INFO "Starting agents toolchain bootstrap"
   install_apt_packages
+  install_aws
   log OK "Bootstrap completed"
 }
 
