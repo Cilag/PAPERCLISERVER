@@ -619,11 +619,11 @@ install_github_binary() {
   local url
   if [ "$tag" = "latest" ]; then
     url=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
-          | jq -r ".assets[] | select(.name | test(\"$asset\")) | .browser_download_url" \
+          | jq -r --arg pat "$asset" '.assets[] | select(.name | test($pat)) | .browser_download_url' \
           | head -1)
   else
     url=$(curl -fsSL "https://api.github.com/repos/$repo/releases/tags/$tag" \
-          | jq -r ".assets[] | select(.name | test(\"$asset\")) | .browser_download_url" \
+          | jq -r --arg pat "$asset" '.assets[] | select(.name | test($pat)) | .browser_download_url' \
           | head -1)
   fi
   if [ -z "$url" ]; then
@@ -631,14 +631,15 @@ install_github_binary() {
     return 1
   fi
   curl -fsSL "$url" -o "$tmpdir/asset"
-  # Detect archive type and extract
   case "$url" in
     *.tar.gz|*.tgz) tar -xzf "$tmpdir/asset" -C "$tmpdir" ;;
     *.zip)          unzip -q "$tmpdir/asset" -d "$tmpdir" ;;
-    *)              # plain binary
-                    cp "$tmpdir/asset" "$tmpdir/$bin_path_in_archive" ;;
+    *)              cp "$tmpdir/asset" "$tmpdir/$name"; bin_path_in_archive="$name" ;;
   esac
-  install -m 755 "$tmpdir/$bin_path_in_archive" "$HOME/.local/bin/$name"
+  local resolved
+  resolved=$(compgen -G "$tmpdir/$bin_path_in_archive" | head -1 || true)
+  [ -z "$resolved" ] && resolved="$tmpdir/$bin_path_in_archive"
+  install -m 755 "$resolved" "$HOME/.local/bin/$name"
   log OK "$name installed: $("$name" --version 2>&1 | head -1)"
 }
 
