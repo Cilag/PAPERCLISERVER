@@ -541,3 +541,31 @@ sudo systemctl daemon-reload && sudo systemctl enable --now paperclip
 
 # 4. Premier accès UI via tunnel SSH (cf. §7), puis wizard onboarding (§4.7)
 ```
+
+## 15. Équipe d'agents (Phase 2)
+
+6 agents dans la company Guigui Lab (id `f7e677f1-a742-4876-a930-b6ac9c0ff13c`) :
+
+| Agent (nom affiché) | Rôle réel | Heartbeat | reportsTo | id |
+|---|---|---|---|---|
+| CEO | **Infra Lead** (coordinateur, délègue) | à activer (UI) | board | `eafb79a9…` |
+| CTO | **DevOps/SRE** | on-demand | CEO | `0a9766a6…` |
+| Cloud Architect | Cloud | on-demand | CEO | `b5d7f53a…` |
+| System Engineer | Système | on-demand | CEO | `739ab01b…` |
+| Network Engineer | Réseau | on-demand | CEO | `de44c15d…` |
+| Security Engineer | Sécurité | on-demand | CEO | `03658d08…` |
+
+> Les labels "CEO"/"CTO" sont les agents démo réutilisés (pas de rename API). Renommables via l'UI si souhaité.
+
+**Instructions** : versionnées dans `scripts/agents/*.AGENTS.md`, déployées par `scripts/create-infra-agents.sh` (idempotent : POST les 4 nouveaux via l'API REST locale + copie les 6 `AGENTS.md` dans `~/.paperclip/instances/default/companies/<CID>/agents/<AID>/instructions/AGENTS.md`).
+
+**Reconfigurer un agent** : éditer `scripts/agents/<x>.AGENTS.md`, re-déployer via `create-infra-agents.sh`. Pas de restart paperclip nécessaire (instructions relues à chaque run d'agent).
+
+**Étapes UI non couvertes par l'API** (à faire dans l'UI) :
+1. Archiver l'agent `__probe_agent__` (résidu de test)
+2. Activer le heartbeat sur l'agent CEO (Settings → Heartbeat → Enabled)
+3. (Optionnel) Renommer CEO→"Infra Lead", CTO→"DevOps/SRE"
+
+**Restant (Phase 2, différé)** : smoke tests des 5 spécialistes + test de délégation du Lead (Tasks 10-11 du plan `docs/plans/2026-05-28-phase2-agents.md`) — gourmands en tokens, à faire en session dédiée.
+
+> ⚠️ **Limite API** : la création d'agent via `POST /api/companies/<CID>/agents` marche, mais PATCH/DELETE ne sont pas exposés. Renommer/archiver/toggle heartbeat = UI uniquement.
