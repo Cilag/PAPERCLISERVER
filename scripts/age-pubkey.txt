@@ -1,0 +1,5 @@
+# Guigui Lab — age public key (for .sops.yaml in client repos)
+# This is the PUBLIC key — safe to commit. The private key lives at
+# ~/.config/sops/age/keys.txt on the MSI (mode 600), referenced by SOPS_AGE_KEY_FILE.
+# new-client.sh injects this pubkey into each client repo's .sops.yaml.
+age1mmy6us9z7attywd46t53f40dxf0e6wa7wswjurqged7ugyw9x4nq520kwd
