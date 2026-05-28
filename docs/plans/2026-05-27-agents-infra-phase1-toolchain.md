@@ -207,13 +207,17 @@ esac
 # ─── 1. APT base packages ──────────────────────────────────────────────────
 install_apt_packages() {
   local pkgs=(
-    curl jq unzip ca-certificates gnupg lsb-release
+    curl git jq unzip ca-certificates gnupg lsb-release
     dnsutils nmap traceroute mtr
     wireguard-tools
     podman buildah skopeo
     python3-pip pipx
     age
   )
+  if dpkg -s "${pkgs[@]}" >/dev/null 2>&1; then
+    log OK "apt packages already installed"
+    return
+  fi
   log INFO "Installing apt packages: ${pkgs[*]}"
   sudo apt-get update -qq
   sudo apt-get install -y "${pkgs[@]}"
@@ -650,7 +654,9 @@ install_go_binaries() {
   install_github_binary trivy     aquasecurity/trivy latest "trivy_.*_Linux-64bit\\.tar\\.gz$" "trivy"
   install_github_binary infracost infracost/infracost latest "infracost-linux-amd64\\.tar\\.gz$" "infracost-linux-amd64"
   install_github_binary kube-bench aquasecurity/kube-bench latest "kube-bench_.*_linux_amd64\\.tar\\.gz$" "kube-bench"
+  install_github_binary terragrunt gruntwork-io/terragrunt latest "terragrunt_linux_amd64$" "terragrunt_linux_amd64"
   # age is installed via apt (Task 2) on Ubuntu 24+, so no need here
+  # TODO Phase 2+: tailscale, argocd, flux CLIs (operational tools, install when infra context is known)
 }
 ```
 

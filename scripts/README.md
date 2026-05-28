@@ -8,6 +8,7 @@ Idempotent setup for the 5-agents infrastructure consulting team.
 - `new-client.sh <slug> <mission-title>` — scaffolds a new client mission (Paperclip project + GitHub repo + workdir clone).
 - `lib/check.sh` — helper functions sourced by other scripts.
 - `templates/repo-template/` — skeleton committed into each new client repo.
+- `age-pubkey.txt` — the committed PUBLIC age key (safe to commit) that new-client.sh injects into each client repo's .sops.yaml.
 
 ## How to run
 

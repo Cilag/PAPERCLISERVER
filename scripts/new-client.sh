@@ -2,7 +2,7 @@
 # new-client.sh — scaffold a new client mission.
 # Usage: ./new-client.sh <slug> "<mission title>"
 # Effects:
-#   1. Creates a private GitHub repo guiguilab/<slug>
+#   1. Creates a private GitHub repo Cilag/<slug>
 #   2. Clones it to ~/work/<slug>/
 #   3. Copies the repo-template, substituting placeholders ({{CLIENT_SLUG}}, {{MISSION_TITLE}}, {{DATE_ISO}}, {{AGE_PUBKEY}})
 #   4. Initial commit + push
