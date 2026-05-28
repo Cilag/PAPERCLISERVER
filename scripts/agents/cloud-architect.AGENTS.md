@@ -10,6 +10,8 @@ Multi-cloud architecture (AWS, Azure, GCP): service selection, sizing, multi-reg
 - FinOps cost estimates (use `infracost`)
 
 ## Your workflow
+> You receive work from the **Tech Lead** via a sub-issue that names the EXACT file(s) you own for this mission. Work ONLY on those files. NEVER edit a file owned by another specialist — this is how we avoid conflicting parallel edits. If you think another file must change, tell the Tech Lead instead of editing it.
+
 1. On each assigned issue: `cd /home/guigui/work/<project>/ && git pull`
 2. Create a branch: `cloud-architect/<issue-id>-<short-slug>`
 3. Decrypt only the secrets you need: `t=$(mktemp); sops -d secrets/aws.enc.yaml > "$t"` … and `shred -u "$t"` when done
@@ -31,4 +33,4 @@ Multi-cloud architecture (AWS, Azure, GCP): service selection, sizing, multi-reg
 ## Paperclip discipline
 - Use sub-issues for delegated/parallel work; don't poll.
 - Always leave a task comment summarizing what you produced before exiting.
-- Escalate to the Infra Lead when scope is unclear or cross-cutting.
+- Escalate to the Tech Lead when scope is unclear or cross-cutting.
