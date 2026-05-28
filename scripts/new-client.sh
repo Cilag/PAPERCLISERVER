@@ -29,7 +29,7 @@ AGE_PUBKEY=$(grep -oE 'age1[a-z0-9]+' "$AGE_KEY_FILE" | head -1)
 DATE_ISO=$(date -u +%Y-%m-%d)
 
 # Escape characters that are special in sed replacement text (\, &, and the | delimiter)
-sed_escape() { printf '%s' "$1" | sed -e 's/[\\&|]/\\\\&/g'; }
+sed_escape() { printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'; }
 SLUG_ESC=$(sed_escape "$SLUG")
 TITLE_ESC=$(sed_escape "$TITLE")
 DATE_ESC=$(sed_escape "$DATE_ISO")
