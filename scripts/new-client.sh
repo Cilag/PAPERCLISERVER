@@ -22,7 +22,7 @@ SLUG="$1"
 TITLE="$2"
 WORK="$HOME/work/$SLUG"
 TEMPLATE="$SCRIPT_DIR/templates/repo-template"
-GH_OWNER="${GH_OWNER:-ozoux}"
+GH_OWNER="${GH_OWNER:-Cilag}"
 AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
 [ -f "$AGE_KEY_FILE" ] || { log ERROR "age key not found at $AGE_KEY_FILE — run bootstrap/age-keygen first"; exit 1; }
 AGE_PUBKEY=$(grep -oE 'age1[a-z0-9]+' "$AGE_KEY_FILE" | head -1)
