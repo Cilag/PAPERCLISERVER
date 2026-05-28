@@ -39,10 +39,10 @@ create_agent() {
   local name="$1" title="$2" caps="$3"
   local existing; existing=$(get_agent_id_by_name "$name")
   if [ -n "$existing" ]; then
-    log OK "agent '$name' already exists ($existing)"
+    log OK "agent '$name' already exists ($existing)" >&2
     echo "$existing"; return
   fi
-  log INFO "creating agent '$name'"
+  log INFO "creating agent '$name'" >&2
   local body
   body=$(jq -n --arg n "$name" --arg t "$title" --arg c "$caps" --arg r "$CEO_ID" \
     '{name:$n, role:"engineer", title:$t, capabilities:$c, adapterType:"claude_local", reportsTo:$r}')
