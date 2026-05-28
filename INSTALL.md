@@ -463,17 +463,61 @@ node node_modules/paperclipai/dist/index.js db:backup
 could not open shared memory segment "/PostgreSQL.NNNN": No such file or directory
 ```
 
-**Cause** : segment DSM (Dynamic Shared Memory) orphelin de Postgres dans le namespace systemd. Probablement aggravé par `PrivateTmp=true` qui isole partiellement `/dev/shm`. Déclenché par les multiples restarts rapides pendant l'expérimentation tailnet.
+**VRAIE CAUSE (root-cause confirmée le 2026-05-28)** : **`RemoveIPC=yes`** de systemd-logind (défaut Ubuntu). Paperclip lance son Postgres embarqué en tant que `guigui` (uid 1000, utilisateur **normal**). Quand `guigui` ferme sa **dernière session** (une session SSH qui se déconnecte, par ex.), systemd-logind **supprime tous les objets IPC appartenant à guigui** — dont les segments de mémoire partagée POSIX de Postgres dans `/dev/shm`. Postgres se retrouve avec des segments fantômes → toutes les requêtes échouent avec `could not open shared memory segment`.
 
-**Fix immédiat** : `sudo systemctl reset-failed paperclip && sudo systemctl start paperclip`
+> ⚠️ La première hypothèse (`PrivateTmp=true`) était **fausse** : l'incident a récidivé ~12h après l'avoir retiré. Le vrai déclencheur est RemoveIPC + le fait que Postgres tourne sous un user normal.
+
+**Fix immédiat** (si ça arrive) : `sudo systemctl restart paperclip`
 
 **Fix durable appliqué** :
-- Retiré `PrivateTmp=true` du unit (perte mineure de durcissement, postgres reste stable)
-- `StartLimitIntervalSec=120` + `StartLimitBurst=3` pour éviter les boucles de restart
-- `KillSignal=SIGTERM` (au lieu de SIGINT qui n'était pas catché par paperclip)
-- `TimeoutStopSec=45` pour shutdown propre de postgres
+```bash
+sudo loginctl enable-linger guigui
+```
+Avec le linger activé, `guigui` garde un user-manager systemd persistant → il ne "log out" jamais complètement → RemoveIPC ne se déclenche plus jamais pour lui. Vérif : `loginctl show-user guigui -p Linger` → `Linger=yes`.
 
-## 13. Reproduire ce setup ailleurs
+**Alternatives (non retenues)** : `RemoveIPC=no` dans `/etc/systemd/logind.conf` (global, nécessite restart logind) ; ou faire tourner le service sous un user système (uid < 1000) ; ou `dynamic_shared_memory_type = mmap` dans la config Postgres embarquée.
+
+**Durcissements unit complémentaires** (appliqués lors de la fausse piste, gardés car sains) :
+- Retiré `PrivateTmp=true`
+- `StartLimitIntervalSec=120` + `StartLimitBurst=3` (évite les boucles de restart)
+- `KillSignal=SIGTERM` (SIGINT n'était pas catché par paperclip)
+- `TimeoutStopSec=45` (shutdown propre de Postgres)
+
+## 13. Toolchain agents (Phase 1)
+
+Installé via `scripts/bootstrap-agents-toolchain.sh` (idempotent, voir repo PAPERCLISERVER). 20 CLIs, tous validés (34/34 checks d'acceptance) :
+
+| Catégorie | Outils |
+|---|---|
+| Cloud | `aws` (2.34), `az` (2.86), `gcloud` |
+| IaC | `terraform` (1.15), `tofu` (1.12), `ansible`, `checkov`, `infracost` |
+| K8s | `kubectl`, `helm` (3.21), `kustomize` (5.8) |
+| Sécurité | `sops` (3.13), `age`, `tfsec`, `gitleaks` (8.30), `trivy` (0.70), `kube-bench`, `prowler` |
+| Autres | `gh` (2.93), `yq`, `jq`, `nmap`, `mtr`, `podman`, `wireguard-tools` |
+
+Binaires user-space dans `~/.local/bin`, le reste via apt / scripts officiels.
+
+### Secrets pipeline (sops + age)
+- Clé privée : `~/.config/sops/age/keys.txt` (mode 600)
+- Clé publique : `age1mmy6us9z7attywd46t53f40dxf0e6wa7wswjurqged7ugyw9x4nq520kwd`
+- Var service : `SOPS_AGE_KEY_FILE` dans `agent-env`
+
+### GitHub
+- PAT fine-grained sur le compte **Cilag** (Administration/Contents/PR/Issues/Workflows RW, All repos)
+- Dans `agent-env` : `GITHUB_TOKEN` + `GH_TOKEN`
+- **`gh auth setup-git`** lancé une fois → git utilise le token pour les push HTTPS (sinon `git push` demande un user/password). À refaire si on régénère le token.
+- Identité git globale : `Guigui Lab Agent <ozouxguillaume@gmail.com>`
+
+### Scaffolder de mission
+```bash
+~/work/_bootstrap/new-client.sh <slug> "<titre mission>"
+# → crée repo privé github.com/Cilag/<slug>, clone dans ~/work/<slug>/,
+#   applique le template (docs/terraform/ansible/secrets/.github), injecte la pubkey age dans .sops.yaml,
+#   commit initial + push
+```
+Owner GitHub par défaut : `Cilag` (override possible via `GH_OWNER=...`).
+
+## 14. Reproduire ce setup ailleurs
 
 Si tu refais la même installation sur un autre Ubuntu 24+ :
 
