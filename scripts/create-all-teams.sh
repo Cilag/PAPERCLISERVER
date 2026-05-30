@@ -121,6 +121,7 @@ deploy_instructions "$QA_ID"         "$AGENTS_SRC/qa-engineer.AGENTS.md"
 deploy_instructions "$SOC_ID"        "$AGENTS_SRC/soc-analyst.AGENTS.md"
 deploy_instructions "$PEN_ID"        "$AGENTS_SRC/pentester.AGENTS.md"
 deploy_instructions "$GRC_ID"        "$AGENTS_SRC/grc-analyst.AGENTS.md"
+deploy_instructions "$SEC_ID"        "$AGENTS_SRC/security-engineer.AGENTS.md"
 
 log OK "Done. Org:"
 printf '  %-22s %s\n' "CEO"               "$CEO_ID"
