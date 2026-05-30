@@ -19,15 +19,23 @@ _cleanup_tmpdirs() {
 }
 trap _cleanup_tmpdirs EXIT
 
-# Ensure ~/.local/bin exists and is in PATH
+# Ensure ~/.local/bin exists and is PERSISTED on PATH for agent shells.
+# Critical: semgrep/gitleaks/trivy/pip-audit install here; if the agents' shell
+# doesn't have it on PATH they report the tools as "not available" (as the Cyber
+# Lead's audit-v1 did) and fall back to costly manual review. So persist it, don't
+# just warn.
 ensure_dir "$HOME/.local/bin"
+for rc in "$HOME/.profile" "$HOME/.bashrc"; do
+  if [ -f "$rc" ] && grep -qF '.local/bin' "$rc"; then
+    log OK "~/.local/bin already on PATH in $(basename "$rc")"
+  else
+    printf '\n# added by bootstrap-agents-toolchain.sh\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"
+    log OK "persisted ~/.local/bin to PATH in $(basename "$rc")"
+  fi
+done
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) ;;
-  *)
-    log WARN "$HOME/.local/bin not in PATH. Add to ~/.profile:"
-    log WARN '  export PATH="$HOME/.local/bin:$PATH"'
-    export PATH="$HOME/.local/bin:$PATH"
-    ;;
+  *) export PATH="$HOME/.local/bin:$PATH" ;;
 esac
 
 # ─── 1. APT base packages ──────────────────────────────────────────────────
@@ -187,7 +195,9 @@ install_pipx_tools() {
   log INFO "Ensuring pipx is configured for current user"
   pipx ensurepath >/dev/null 2>&1 || true
 
-  local pipx_pkgs=(ansible-core checkov yq prowler)
+  # checkov/prowler: IaC & cloud. semgrep/pip-audit: app-code SAST & dependency audit
+  # for the Cyber team's tooling-first audits (were missing → manual review fallback).
+  local pipx_pkgs=(ansible-core checkov yq prowler semgrep pip-audit)
   for pkg in "${pipx_pkgs[@]}"; do
     if pipx list 2>/dev/null | grep -q "package $pkg "; then
       log OK "pipx pkg $pkg already installed"
