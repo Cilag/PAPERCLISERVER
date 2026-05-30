@@ -544,28 +544,27 @@ sudo systemctl daemon-reload && sudo systemctl enable --now paperclip
 
 ## 15. Équipe d'agents (Phase 2)
 
-6 agents dans la company Guigui Lab (id `f7e677f1-a742-4876-a930-b6ac9c0ff13c`) :
+Company Guigui Lab (id `f7e677f1-a742-4876-a930-b6ac9c0ff13c`) — 16 agents répartis en 3 équipes.
 
-| Agent (nom affiché) | Rôle réel | Heartbeat | reportsTo | id |
-|---|---|---|---|---|
-| CEO | **Infra Lead** (coordinateur, délègue) | à activer (UI) | board | `eafb79a9…` |
-| CTO | **DevOps/SRE** | on-demand | CEO | `0a9766a6…` |
-| Cloud Architect | Cloud | on-demand | CEO | `b5d7f53a…` |
-| System Engineer | Système | on-demand | CEO | `739ab01b…` |
-| Network Engineer | Réseau | on-demand | CEO | `de44c15d…` |
-| Security Engineer | Sécurité | on-demand | CEO | `03658d08…` |
+### Org (3 équipes)
 
-> Les labels "CEO"/"CTO" sont les agents démo réutilisés (pas de rename API). Renommables via l'UI si souhaité.
+```
+board → CEO → Tech Lead → ┌─ Infra Lead → Cloud / System / Network / DevOps
+                          ├─ Web Lead   → Frontend / Backend / QA
+                          └─ Cyber Lead → SOC / Pentester / GRC / Security Engineer
+```
 
-**Instructions** : versionnées dans `scripts/agents/*.AGENTS.md`, déployées par `scripts/create-infra-agents.sh` (idempotent : POST les 4 nouveaux via l'API REST locale + copie les 6 `AGENTS.md` dans `~/.paperclip/instances/default/companies/<CID>/agents/<AID>/instructions/AGENTS.md`).
+Boucle qualité : le Web Lead remet le code au Cyber Lead, qui note /10 (Critical −4, High −2, Medium −0.5, Low −0.1 ; pass ≥ 8). < 8 → retour Dev avec findings ; max 3 itérations puis escalade au Tech Lead.
 
-**Reconfigurer un agent** : éditer `scripts/agents/<x>.AGENTS.md`, re-déployer via `create-infra-agents.sh`. Pas de restart paperclip nécessaire (instructions relues à chaque run d'agent).
+### Déploiement
 
-**Étapes UI non couvertes par l'API** (à faire dans l'UI) :
-1. Archiver l'agent `__probe_agent__` (résidu de test)
-2. Activer le heartbeat sur l'agent CEO (Settings → Heartbeat → Enabled)
-3. (Optionnel) Renommer CEO→"Infra Lead", CTO→"DevOps/SRE"
+```bash
+# sur le MSI, en tant que guigui
+bash ~/PAPERCLISERVER/scripts/create-all-teams.sh
+```
 
-**Restant (Phase 2, différé)** : smoke tests des 5 spécialistes + test de délégation du Lead (Tasks 10-11 du plan `docs/plans/2026-05-28-phase2-agents.md`) — gourmands en tokens, à faire en session dédiée.
+Le script est idempotent : crée les 9 nouveaux agents, repointe les 5 existants, déploie les 16 `AGENTS.md`.
+
+**Étapes UI manuelles :** activer le *heartbeat* sur les 5 agents de coordination : **CEO, Tech Lead, Infra Lead, Web Lead, Cybersecurity Lead**. Les 9 spécialistes restent en réveil sur assignation (pas de heartbeat → économie de tokens).
 
 > ⚠️ **Limite API** : la création d'agent via `POST /api/companies/<CID>/agents` marche, mais PATCH/DELETE ne sont pas exposés. Renommer/archiver/toggle heartbeat = UI uniquement.
