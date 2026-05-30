@@ -56,9 +56,15 @@ repoint_agent() {
   local name="$1" reports="$2"
   local id; id=$(get_agent_id_by_name "$name")
   [ -n "$id" ] || { log WARN "cannot repoint '$name' (not found)"; return; }
-  curl -fsSL -X PATCH "$API/companies/$COMPANY_ID/agents/$id" \
-    -H 'Content-Type: application/json' -d "$(jq -n --arg r "$reports" '{reportsTo:$r}')" >/dev/null
-  log OK "repointed '$name' -> ${reports:0:8}" >&2
+  # Agent update is a FLAT route: PATCH /api/agents/<id> (not nested under /companies).
+  # Non-fatal: a repoint failure must not abort instruction deployment below.
+  if curl -fsSL -X PATCH "$API/agents/$id" \
+       -H 'Content-Type: application/json' \
+       -d "$(jq -n --arg r "$reports" '{reportsTo:$r}')" >/dev/null 2>&1; then
+    log OK "repointed '$name' -> ${reports:0:8}" >&2
+  else
+    log WARN "repoint of '$name' failed (continuing)" >&2
+  fi
   echo "$id"
 }
 
